@@ -1,1 +1,4 @@
-# blog
+- git clone https://github.com/oceanchen011/blog.git
+- git install 
+- cd final
+- npm start 
