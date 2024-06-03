@@ -1,0 +1,106 @@
+<div class="container chatroom-container">
+    <h1>{{roomName}}</h1>
+    <p>Nickname: <span id="nickname-display"></span></p>
+
+    <div class="chat-container">
+        <ul id="messages-list">
+            {{#each messages}}
+                <li>
+                    <strong>{{this.sender}}:</strong> {{this.message}} <small class="text-muted">{{this.timestamp}}</small>
+                </li>
+            {{/each}}
+        </ul>
+    </div>
+
+    <form id="message-form" class="message-form">
+        <input type="text" id="message-input" placeholder="Type your message here..." required>
+        <button type="submit">Send</button>
+    </form>
+
+    <div class="modal fade" id="nicknameModal" tabindex="-1" role="dialog" aria-labelledby="nicknameModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nicknameModalLabel">Enter your nickname</h5>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="nickname-input" class="form-control" placeholder="Nickname" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="save-nickname" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let nickname = sessionStorage.getItem('nickname');
+
+        if (!nickname) {
+            $('#nicknameModal').modal({ backdrop: 'static', keyboard: false });
+            $('#nicknameModal').modal('show');
+        } else {
+            document.getElementById('nickname-display').innerText = nickname;
+        }
+
+        document.getElementById('save-nickname').addEventListener('click', function () {
+            nickname = document.getElementById('nickname-input').value || 'Anonymous';
+            sessionStorage.setItem('nickname', nickname);
+            document.getElementById('nickname-display').innerText = nickname;
+            $('#nicknameModal').modal('hide');
+        });
+
+        document.getElementById('message-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            postMessage();
+        });
+
+        function postMessage() {
+            const message = document.getElementById('message-input').value;
+            const roomId = '{{roomId}}';
+            const nickname = sessionStorage.getItem('nickname');
+
+            fetch('/post-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ roomId, message, nickname })
+            }).then(response => {
+                if (response.ok) {
+                    const messageList = document.getElementById('messages-list');
+                    const newMessageElement = document.createElement('li');
+                    newMessageElement.innerHTML = `<strong>${nickname}:</strong> ${message}`;
+                    messageList.appendChild(newMessageElement);
+                    document.getElementById('message-input').value = '';
+                }
+            }).catch(error => {
+                console.error('Error posting message:', error);
+            });
+        }
+
+        function fetchMessages() {
+            const roomId = '{{roomId}}';
+
+            fetch(`/get-messages?roomId=${roomId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const messageList = document.getElementById('messages-list');
+                    messageList.innerHTML = '';
+                    data.messages.forEach(msg => {
+                        const messageElement = document.createElement('li');
+                        messageElement.innerHTML = `<strong>${msg.sender}:</strong> ${msg.message} <small class="text-muted">${msg.timestamp}</small>`;
+                        messageList.appendChild(messageElement);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching messages:', error);
+                });
+        }
+
+        setInterval(fetchMessages, 5000);
+        fetchMessages();
+    });
+</script>
